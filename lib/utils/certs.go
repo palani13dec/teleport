@@ -26,7 +26,8 @@ import (
 	"time"
 
 	"github.com/gravitational/trace"
-	log "github.com/sirupsen/logrus"
+
+	"github.com/sirupsen/logrus"
 )
 
 // ParseSigningKeyStore parses signing key store from PEM encoded key pair
@@ -141,7 +142,7 @@ func ParsePrivateKeyDER(der []byte) (crypto.Signer, error) {
 		if err != nil {
 			generalKey, err = x509.ParseECPrivateKey(der)
 			if err != nil {
-				log.Errorf("failed to parse key: %v", err)
+				logrus.Errorf("Failed to parse key: %v.", err)
 				return nil, trace.BadParameter("failed parsing private key")
 			}
 		}
