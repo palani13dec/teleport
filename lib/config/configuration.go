@@ -319,7 +319,7 @@ func ApplyFileConfig(fc *FileConfig, cfg *service.Config) error {
 func applyAuthConfig(fc *FileConfig, cfg *service.Config) error {
 	var err error
 
-	// passhtrough custom certificate authority file
+	// passhtrough kube configuration file
 	if fc.Auth.KubeconfigFile != "" {
 		cfg.Auth.KubeconfigPath = fc.Auth.KubeconfigFile
 	}
@@ -518,6 +518,9 @@ func applyProxyConfig(fc *FileConfig, cfg *service.Config) error {
 	// apply kubernetes proxy config, by default kube proxy is disabled
 	if fc.Proxy.Kube.Configured() {
 		cfg.Proxy.Kube.Enabled = fc.Proxy.Kube.Enabled()
+	}
+	if fc.Proxy.Kube.KubeconfigFile != "" {
+		cfg.Proxy.Kube.KubeconfigPath = fc.Proxy.Kube.KubeconfigFile
 	}
 	if fc.Proxy.Kube.ListenAddress != "" {
 		addr, err := utils.ParseHostPortAddr(fc.Proxy.Kube.ListenAddress, int(defaults.KubeProxyListenPort))

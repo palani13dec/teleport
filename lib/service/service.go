@@ -1906,6 +1906,7 @@ func (process *TeleportProcess) initProxyEndpoint(conn *Connector) error {
 				AuditLog:        conn.Client,
 				ServerID:        cfg.HostUUID,
 				ClusterOverride: cfg.Proxy.Kube.ClusterOverride,
+				KubeconfigPath:  cfg.Proxy.Kube.KubeconfigPath,
 			},
 			TLS:           tlsConfig,
 			LimiterConfig: cfg.Proxy.Limiter,
