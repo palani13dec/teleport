@@ -404,7 +404,7 @@ func MakeDefaultConfig() (config *Config) {
 }
 
 // ApplyDefaults applies default values to the existing config structure
-func ApplyDefaults(cfg *Config) {
+func ApplyDefaults(cfg *Config, fips bool) {
 	// Get defaults for Cipher, Kex algorithms, and MAC algorithms from
 	// golang.org/x/crypto/ssh default config.
 	var sc ssh.Config
@@ -467,4 +467,13 @@ func ApplyDefaults(cfg *Config) {
 	cfg.SSH.Shell = defaults.DefaultShell
 	defaults.ConfigureLimiter(&cfg.SSH.Limiter)
 	cfg.SSH.PAM = &pam.Config{Enabled: false}
+}
+
+// ApplyFIPSDefaults updates TLS and SSH cryptographic primitives in defaults
+// to be FIPS compliant.
+func ApplyFIPSDefaults(cfg *Config) {
+	cfg.CipherSuites = defaults.FIPSCipherSuites
+	cfg.Ciphers = defaults.FIPSCiphers
+	cfg.KEXAlgorithms = defaults.FIPSKEXAlgorithms
+	cfg.MACAlgorithms = defaults.FIPSMACAlgorithms
 }
