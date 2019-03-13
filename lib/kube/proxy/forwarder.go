@@ -439,7 +439,9 @@ func (f *Forwarder) exec(ctx *authContext, w http.ResponseWriter, req *http.Requ
 		})
 	}
 
-	f.setupForwardingHeaders(ctx, sess, req)
+	if err := f.setupForwardingHeaders(ctx, sess, req); err != nil {
+		return nil, trace.Wrap(err)
+	}
 
 	proxy, err := createRemoteCommandProxy(request)
 	if err != nil {
@@ -449,7 +451,7 @@ func (f *Forwarder) exec(ctx *authContext, w http.ResponseWriter, req *http.Requ
 
 	f.Debugf("Created streams, getting executor.")
 
-	executor, err := f.getExecutor(sess, req)
+	executor, err := f.getExecutor(*ctx, sess, req)
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
@@ -508,9 +510,11 @@ func (f *Forwarder) portForward(ctx *authContext, w http.ResponseWriter, req *ht
 		return nil, trace.Wrap(err)
 	}
 
-	f.setupForwardingHeaders(ctx, sess, req)
+	if err := f.setupForwardingHeaders(ctx, sess, req); err != nil {
+		return nil, trace.Wrap(err)
+	}
 
-	dialer, err := f.getDialer(sess, req)
+	dialer, err := f.getDialer(*ctx, sess, req)
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
@@ -547,7 +551,13 @@ func (f *Forwarder) portForward(ctx *authContext, w http.ResponseWriter, req *ht
 	return nil, nil
 }
 
-func (f *Forwarder) setupForwardingHeaders(ctx *authContext, sess *clusterSession, req *http.Request) {
+func (f *Forwarder) setupForwardingHeaders(ctx *authContext, sess *clusterSession, req *http.Request) error {
+	for header := range req.Header {
+		if strings.HasPrefix(header, "Impersonate-") {
+			return trace.AccessDenied("impersonation request has been denied")
+		}
+	}
+
 	// Setup scheme, override target URL to the destination address
 	req.URL.Scheme = "https"
 	req.URL.Host = sess.targetAddr
@@ -559,13 +569,16 @@ func (f *Forwarder) setupForwardingHeaders(ctx *authContext, sess *clusterSessio
 	req.Header.Add("X-Forwarded-Host", req.Host)
 	req.Header.Add("X-Forwarded-Path", req.URL.Path)
 	req.Header.Add("Impersonate-User", ctx.User.GetName())
+	f.Debugf("Impersonate User: %v", ctx.User)
 	for _, group := range ctx.kubeGroups {
 		req.Header.Add("Impersonate-Group", group)
+		f.Debugf("Impersonate Group: %v", group)
 	}
 	if f.creds.cfg.BearerToken != "" {
 		f.Debugf("Using Bearer Token Auth")
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %v", f.creds.cfg.BearerToken))
 	}
+	return nil
 }
 
 // catchAll forwards all HTTP requests to the target k8s API server
@@ -574,19 +587,34 @@ func (f *Forwarder) catchAll(ctx *authContext, w http.ResponseWriter, req *http.
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
-	f.setupForwardingHeaders(ctx, sess, req)
+	if err := f.setupForwardingHeaders(ctx, sess, req); err != nil {
+		return nil, trace.Wrap(err)
+	}
 	sess.forwarder.ServeHTTP(w, req)
 	return nil, nil
 }
 
-func (f *Forwarder) getExecutor(sess *clusterSession, req *http.Request) (remotecommand.Executor, error) {
-	upgradeRoundTripper := NewSpdyRoundTripperWithDialer(req.Context(), sess.cluster.DialWithContext, sess.tlsConfig, true)
+func (f *Forwarder) getExecutor(ctx authContext, sess *clusterSession, req *http.Request) (remotecommand.Executor, error) {
+	upgradeRoundTripper := NewSpdyRoundTripperWithDialer(roundTripperConfig{
+		ctx:             req.Context(),
+		authCtx:         ctx,
+		dial:            sess.cluster.DialWithContext,
+		tlsConfig:       sess.tlsConfig,
+		followRedirects: true,
+		bearerToken:     f.creds.cfg.BearerToken,
+	})
 	return remotecommand.NewSPDYExecutorForTransports(upgradeRoundTripper, upgradeRoundTripper, req.Method, req.URL)
 }
 
-func (f *Forwarder) getDialer(sess *clusterSession, req *http.Request) (httpstream.Dialer, error) {
-	upgradeRoundTripper := NewSpdyRoundTripperWithDialer(req.Context(), sess.cluster.DialWithContext, sess.tlsConfig, true)
-
+func (f *Forwarder) getDialer(ctx authContext, sess *clusterSession, req *http.Request) (httpstream.Dialer, error) {
+	upgradeRoundTripper := NewSpdyRoundTripperWithDialer(roundTripperConfig{
+		ctx:             req.Context(),
+		authCtx:         ctx,
+		dial:            sess.cluster.DialWithContext,
+		tlsConfig:       sess.tlsConfig,
+		followRedirects: true,
+		bearerToken:     f.creds.cfg.BearerToken,
+	})
 	client := &http.Client{
 		Transport: upgradeRoundTripper,
 	}
