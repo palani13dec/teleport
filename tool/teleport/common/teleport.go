@@ -142,10 +142,14 @@ func Run(options Options) (executedCommand string, conf *service.Config) {
 	}
 
 	// Create default configuration.
-	conf = service.MakeDefaultConfig(ccf.FIPS)
+	conf = service.MakeDefaultConfig()
 
-	// If FIPS mode is specified, update defaults to be FIPS appropriate.
+	// If FIPS mode is specified, make sure the binary was actually built with
+	// dev.boringcrypto, and if so, update defaults to be FIPS appropriate.
 	if ccf.FIPS {
+		if !utils.IsBoringBinary() {
+			utils.FatalError(trace.BadParameter("binary not compiled against BoringCrypto"))
+		}
 		service.ApplyFIPSDefaults(conf)
 	}
 

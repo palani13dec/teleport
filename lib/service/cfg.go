@@ -404,7 +404,7 @@ func MakeDefaultConfig() (config *Config) {
 }
 
 // ApplyDefaults applies default values to the existing config structure
-func ApplyDefaults(cfg *Config, fips bool) {
+func ApplyDefaults(cfg *Config) {
 	// Get defaults for Cipher, Kex algorithms, and MAC algorithms from
 	// golang.org/x/crypto/ssh default config.
 	var sc ssh.Config

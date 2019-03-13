@@ -354,7 +354,7 @@ func UintSliceSubset(a []uint16, b []uint16) error {
 		}
 
 	}
-	return true
+	return nil
 }
 
 // RemoveFromSlice makes a copy of the slice and removes the passed in values from the copy.

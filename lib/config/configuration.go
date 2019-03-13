@@ -865,8 +865,6 @@ func Configure(clf *CommandLineFlags, cfg *service.Config) error {
 				cfg.Auth.ClusterConfig.GetProxyChecksHostKeys() == services.HostKeyCheckNo {
 				return trace.BadParameter("non-FIPS compliant proxy settings: host key checking must be enabled")
 			}
-
-			// For both S3 and DynamoDB, make sure encryption at rest is enabled.
 		}
 
 	}
