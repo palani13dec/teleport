@@ -1,5 +1,7 @@
+// +build fips
+
 /*
-Copyright 2019 Gravitational, Inc.
+Copyright 2018 Gravitational, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,24 +16,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package utils
+package service
 
-import (
-	"crypto/sha256"
-	"reflect"
-)
-
-var boringPath = "crypto/internal/boring"
-
-// IsBoringBinary checks if the binary was compiled with BoringCrypto.
-func IsBoringBinary() bool {
-	// Check the package name for one of the boring primitives, if the package
-	// path is from BoringCrypto, we know this binary was compiled against the
-	// dev.boringcrypto branch of Go.
-	hash := sha256.New()
-	if reflect.TypeOf(hash).Elem().PkgPath() != boringPath {
-		return false
-	}
-
-	return true
-}
+// This import puts the crypto/tls package into FIPS mode.
+import _ "crypto/tls/fipsonly"
